@@ -1,0 +1,39 @@
+name: Daily MSTR Data Update
+
+on:
+  schedule:
+    # 每天 UTC 時間 00:00 (台灣時間早上 8 點) 自動執行
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允許手動點擊按鈕執行
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run data fetch and AI analysis
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python fetch_data.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add mstr_data.json ai_summary.txt
+          git commit -m "Auto-update data and AI summary" || exit 0
+          git push
