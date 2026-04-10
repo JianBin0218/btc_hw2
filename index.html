@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSTR 溢價監控儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+        .chart-container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MicroStrategy (MSTR) 溢價監控儀表板</h1>
+    <p>觀察 MSTR 市值與其持有的比特幣淨值 (NAV) 之間的溢價關係</p>
+
+    <div class="chart-container">
+        <canvas id="mstrChart"></canvas>
+    </div>
+
+    <div class="ai-container" style="width: 90%; max-width: 1000px; margin: 20px auto; background: #e0f2fe; padding: 20px; border-radius: 10px; border-left: 5px solid #0284c7; text-align: left;">
+        <h3 style="margin-top: 0; color: #0369a1;">✨ AI 趨勢洞察 (Powered by Gemini)</h3>
+        <p id="aiSummaryText">正在載入 AI 分析報告...</p>
+    </div>
+
+    <script>
+        // 抓取剛剛產生的 JSON 資料並畫圖
+        async function renderChart() {
+            try {
+                // 讀取 json 檔案
+                const response = await fetch('mstr_data.json');
+                const data = await response.json();
+
+                // 把資料拆解成長條陣列給 Chart.js 使用
+                const dates = data.map(item => item.date.split(' ')[0]); // 只取日期 YYYY-MM-DD
+                const mstrPrices = data.map(item => item.MSTR_Price);
+                const navPrices = data.map(item => item.NAV_per_share);
+                const premiums = data.map(item => item.Premium_Percent);
+
+                // 設定圖表
+                const ctx = document.getElementById('mstrChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            {
+                                label: 'MSTR 股價 (USD)',
+                                data: mstrPrices,
+                                borderColor: '#2563eb', // 藍色
+                                backgroundColor: 'transparent',
+                                yAxisID: 'y', // 對齊左邊 Y 軸
+                                pointRadius: 0
+                            },
+                            {
+                                label: '每股淨值 NAV (USD)',
+                                data: navPrices,
+                                borderColor: '#16a34a', // 綠色
+                                backgroundColor: 'transparent',
+                                yAxisID: 'y', // 對齊左邊 Y 軸
+                                pointRadius: 0
+                            },
+                            {
+                                label: '溢價 Premium (%)',
+                                data: premiums,
+                                borderColor: '#dc2626', // 紅色
+                                backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                                yAxisID: 'y1', // 對齊右邊 Y 軸 (因為單位是百分比，數值級距不同)
+                                fill: true,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: '價格 (USD)' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: '溢價比例 (%)' },
+                                grid: { drawOnChartArea: false } // 不要讓網格線打架
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("讀取資料失敗，請確認是否透過本地伺服器開啟網頁", error);
+            }
+        }
+
+        async function loadAISummary() {
+            try {
+                const response = await fetch('ai_summary.txt');
+                if (response.ok) {
+                    const text = await response.text();
+                    // 將文字中的換行符號轉成 HTML 的 <br> 以便正確顯示排版
+                    document.getElementById('aiSummaryText').innerHTML = text.replace(/\n/g, '<br>');
+                } else {
+                    document.getElementById('aiSummaryText').innerText = "目前無法載入 AI 分析報告。";
+                }
+            } catch (error) {
+                console.error("讀取 AI 報告失敗", error);
+            }
+        }
+
+        // 執行畫圖函數
+        renderChart();
+
+        // 執行讀取
+        loadAISummary();
+    </script>
+</body>
+</html>
